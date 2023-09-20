@@ -11,270 +11,257 @@
 #include <sys/types.h>
 
 #define BUFSZ 500
-#define MAX_SENSORES_POR_VEZ 3
 
-bool sistema[4][4] = { false };
-int qtdSensoresDisponiveis = 15;
+struct Sensor {
+    int id;
+    double potencia;
+    double eficiencia;
+};
 
 
-int validaId(char *strId) {
-    if(strlen(strId) != 2)
-        return -1;
-    int id = atoi(strId);
-    if(id < 1 || id > 4)
-        return -1;
-    return 0;
-}
+void funçãoGeralQueRecebeOComando(char *instrucao){
+     // Variáveis para armazenar os tokens e a posição
+     // ADICIONAR ERRO SE INSTRUÇÃO ESTIVER VAZIA!!!!!!!!!
+    char *tokens[100]; // Um array de ponteiros para armazenar os tokens
+    int posicao = 0;
 
-void instalarSensor(char *instrucao, int socketCliente) {
-     char msg[500];
-    memset(msg, 0, 500);
-    int sensores[MAX_SENSORES_POR_VEZ];
-    char *entrada = strtok(instrucao, " ");
-    entrada = strtok(instrucao, " "); //Pula a palavra 'sensor' na instrução de entrada.
-    int numSensores = 0;
-    bool atingiuMaxSensores = false;
-    bool entradaInvalida = false;
-    while(strcmp(entrada, "in") != 0 && !entradaInvalida) { //Para de iterar após o último sensor
-        if(validaId(entrada) == -1){
-            entradaInvalida = true;
-            strcat(msg, "invalid sensor ");
-        }
-        else {
-            sensores[numSensores] = atoi(entrada);
-            numSensores++;
-        }
-        entrada = strtok(NULL, " ");
+    // Usamos o strtok para dividir a instrução em tokens com base nos espaços
+    char *token = strtok(instrucao, " ");
+
+    while (token != NULL) {
+        
+        tokens[posicao] = token;// Armazena o token no array de tokens
+        token = strtok(NULL, " ");// Avança para o próximo token
+        posicao++;// Incrementa a posição
     }
-    entrada = strtok(NULL, " ");
-    char msgSensorDuplicado[100];
-    memset(msgSensorDuplicado, 0, 100);
-    if(!entradaInvalida){
-        if(validaId(entrada) == -1)
-            strcat(msg, "invalid equipment ");
-        else {
-            int equipamentoId = atoi(entrada);
-            strcat(msg, "sensor");
-            char idStr[4];
-            bool fezAlteracao = false;
-            for(int i = 0; i < numSensores; i++){
-                if(!sistema[equipamentoId-1][sensores[i]-1]){ //Verifica se o sensor já está instalado
-                    if(qtdSensoresDisponiveis > 0){
-                        sistema[equipamentoId-1][sensores[i]-1] = true; //Instala o sensor
-                        sprintf(idStr, " 0%d", sensores[i]);
-                        strcat(msg, idStr);
-                        qtdSensoresDisponiveis -= 1;
-                        fezAlteracao = true;
-                    }
-                    else {
-                        atingiuMaxSensores = true;
-                        memset(msg, 0, 500);
-                        strcpy(msg, "limit exceeded ");
-                        break;
-                    }
+
+    // INS_REQ
+        if (tokens[0] == "INS_REQ") {
+            int numero;
+            
+            if (posicao > 1 && strstr(tokens[1], ".txt") != NULL) { // Verifica se o parâmetro é um arquivo .txt
+                // Abre o arquivo e lê os parâmetros
+                // chama a função de instalar sensor com os parâmetros
+        } else if (posicao > 1 && sscanf(tokens[1], "%d", &numero) == 1) { // Verifica se os parâmetros são números
+            //Verifica se a instrução tem 4 parâmetros
+            if (posicao > 4) {
+                int num1, num2, num3, num4;
+                if (sscanf(tokens[2], "%d", &num1) == 1 &&
+                    sscanf(tokens[3], "%d", &num2) == 1 &&
+                    sscanf(tokens[4], "%d", &num3) == 1 &&
+                    sscanf(tokens[5], "%d", &num4) == 1) {
+
+                // chama a função de instalar sensor com os parâmetros
+                } else {
+                    printf("A instrução não contém quatro números válidos após tokens[1].\n");
                 }
-                else {
-                   sprintf(idStr, "0%d ", sensores[i]);
-                    strcat(msgSensorDuplicado, idStr);
-                }
+            } else {
+                printf("A instrução não contém quatro números após tokens[1].\n");
             }
-            if(strcmp(msgSensorDuplicado, "") != 0) {
-                strcat(msgSensorDuplicado, "already exists in ");
-                sprintf(idStr, "0%d ", equipamentoId);
-                strcat(msgSensorDuplicado, idStr);
-            }
-            if(!atingiuMaxSensores && (strcmp(msgSensorDuplicado, "") != 0 && fezAlteracao))
-                strcat(msg, " added ");
-            else if(!atingiuMaxSensores && fezAlteracao)
-                strcat(msg, " added ");
-            else
-                strcat(msg, " ");
-            strcat(msg, msgSensorDuplicado);
+        } else {
+            printf("O segundo token não é um número ou não existe.\n");
+        }
+
+        return 0;
+    }
+    }
+
+
+void instalarSensor(struct Sensor sensores[], int numSensores, int sensorID) {
+    int i;
+    for (i = 0; i < numSensores; i++) {
+        if (sensores[i].id == sensorID) {
+            printf("sensor already exists\n");
+            break; // Saímos do loop quando encontramos o sensor
+        } else {
+            // Calcula a potência ele´trica e adiciona o sensor à tabela 1
+            //Imprime código 01
         }
     }
-    msg[strlen(msg)-1] = '\n';
-    int numBytes = send(socketCliente, msg, strlen(msg), 0); //Envia a mensagem
-    if(numBytes != strlen(msg))
-        exibirLogSaida("send");
+
+    if (i == numSensores) {
+        printf("Sensor com o ID %d não encontrado.\n", sensorID);
+    }
 }
+
 
 void consultarEquipamento(char *instrucao, int socketCliente) {
-    char msg[500];
-    memset(msg, 0, 500);
-    bool entrou = false;
-    char *texto = strtok(instrucao, " ");
-    while(strcmp(texto, "in") != 0) {
-        texto = strtok(NULL, " ");
-    }
-    char *id = strtok(NULL, " ");
-    if(validaId(id) == -1) {
-        strcat(msg, "invalid equipment ");
-    }
-    else {
-    int idEquipamento = atoi(id);
-    char idSensor[4];
-    for(int i = 0; i < 4; i++) {
-        if(sistema[idEquipamento-1][i] == true) {
-            sprintf(idSensor, "0%d ", i+1);
-            strcat(msg, idSensor);
-            entrou = true;
-        }
-    }
-    if(!entrou)
-        strcat(msg, "none ");
-    }
-    msg[strlen(msg)-1] = '\n';
-    int numBytes = send(socketCliente, msg, strlen(msg), 0);
-    if(numBytes != strlen(msg))
-        exibirLogSaida("send");
+    // char msg[500];
+    // memset(msg, 0, 500);
+    // bool entrou = false;
+    // char *texto = strtok(instrucao, " ");
+    // while(strcmp(texto, "in") != 0) {
+    //     texto = strtok(NULL, " ");
+    // }
+    // char *id = strtok(NULL, " ");
+    // if(validaId(id) == -1) {
+    //     strcat(msg, "invalid equipment ");
+    // }
+    // else {
+    // int idEquipamento = atoi(id);
+    // char idSensor[4];
+    // for(int i = 0; i < 4; i++) {
+    //     if(sistema[idEquipamento-1][i] == true) {
+    //         sprintf(idSensor, "0%d ", i+1);
+    //         strcat(msg, idSensor);
+    //         entrou = true;
+    //     }
+    // }
+    // if(!entrou)
+    //     strcat(msg, "none ");
+    // }
+    // msg[strlen(msg)-1] = '\n';
+    // int numBytes = send(socketCliente, msg, strlen(msg), 0);
+    // if(numBytes != strlen(msg))
+    //     exibirLogSaida("send");
 }
 
 void removerSensor(char *instrucao, int socketCliente) {
-    char msg[500];
-    memset(msg, 0, 500);
-    int sensores[MAX_SENSORES_POR_VEZ];
-    char *entrada = strtok(instrucao, " ");
-    entrada = strtok(instrucao, " ");
-    int numSensores = 0;
-    bool entradaInvalida = false;
-    while(strcmp(entrada, "in") != 0 && !entradaInvalida) {
-        if(validaId(entrada) == -1) {
-            entradaInvalida = true;
-            strcat(msg, "invalid sensor ");
-        }
-        else {
-            sensores[numSensores] = atoi(entrada);
-            numSensores++;
-        }
-        entrada = strtok(NULL, " ");
-    }
-    entrada = strtok(NULL, " ");
-    char msgSensorNaoExiste[100];
-    memset(msgSensorNaoExiste, 0, 100);
-    if(!entradaInvalida) {
-        if(validaId(entrada) == -1)
-            strcat(msg, "invalid equipment ");
-        else {
-            int equipamentoId = atoi(entrada);
-            strcat(msg, "sensor");
-            char idStr[4];
-            bool fezExclusao = false;
-            for(int i = 0; i < numSensores; i++) {
-                if(sistema[equipamentoId-1][sensores[i]-1]) {
-                    sistema[equipamentoId-1][sensores[i]-1] = false;
-                    sprintf(idStr, " 0%d", sensores[i]);
-                    strcat(msg, idStr);
-                    qtdSensoresDisponiveis += 1;
-                    fezExclusao = true;
-                }
-                else {
-                    sprintf(idStr, "0%d ", sensores[i]);
-                    strcat(msgSensorNaoExiste, idStr);
-                }
-            }
-            if(strcmp(msgSensorNaoExiste, "") != 0) {
-                strcat(msgSensorNaoExiste, "does not exist in ");
-                sprintf(idStr, "0%d ", equipamentoId);
-                strcat(msgSensorNaoExiste, idStr);
-            }
-            if(strcmp(msgSensorNaoExiste, "") != 0 && fezExclusao)
-                strcat(msg, " removed ");
-            else if(fezExclusao)
-                strcat(msg, " removed ");
-            else
-                strcat(msg, " ");
-            strcat(msg, msgSensorNaoExiste);
-        }
-    }
-    msg[strlen(msg)-1] = '\n';
-    int numBytes = send(socketCliente, msg, strlen(msg), 0);
-    if(numBytes != strlen(msg))
-        exibirLogSaida("send");
-}
+//     char msg[500];
+//     memset(msg, 0, 500);
+//     int sensores[MAX_SENSORES_POR_VEZ];
+//     char *entrada = strtok(instrucao, " ");
+//     entrada = strtok(instrucao, " ");
+//     int numSensores = 0;
+//     bool entradaInvalida = false;
+//     while(strcmp(entrada, "in") != 0 && !entradaInvalida) {
+//         if(validaId(entrada) == -1) {
+//             entradaInvalida = true;
+//             strcat(msg, "invalid sensor ");
+//         }
+//         else {
+//             sensores[numSensores] = atoi(entrada);
+//             numSensores++;
+//         }
+//         entrada = strtok(NULL, " ");
+//     }
+//     entrada = strtok(NULL, " ");
+//     char msgSensorNaoExiste[100];
+//     memset(msgSensorNaoExiste, 0, 100);
+//     if(!entradaInvalida) {
+//         if(validaId(entrada) == -1)
+//             strcat(msg, "invalid equipment ");
+//         else {
+//             int equipamentoId = atoi(entrada);
+//             strcat(msg, "sensor");
+//             char idStr[4];
+//             bool fezExclusao = false;
+//             for(int i = 0; i < numSensores; i++) {
+//                 if(sistema[equipamentoId-1][sensores[i]-1]) {
+//                     sistema[equipamentoId-1][sensores[i]-1] = false;
+//                     sprintf(idStr, " 0%d", sensores[i]);
+//                     strcat(msg, idStr);
+//                     qtdSensoresDisponiveis += 1;
+//                     fezExclusao = true;
+//                 }
+//                 else {
+//                     sprintf(idStr, "0%d ", sensores[i]);
+//                     strcat(msgSensorNaoExiste, idStr);
+//                 }
+//             }
+//             if(strcmp(msgSensorNaoExiste, "") != 0) {
+//                 strcat(msgSensorNaoExiste, "does not exist in ");
+//                 sprintf(idStr, "0%d ", equipamentoId);
+//                 strcat(msgSensorNaoExiste, idStr);
+//             }
+//             if(strcmp(msgSensorNaoExiste, "") != 0 && fezExclusao)
+//                 strcat(msg, " removed ");
+//             else if(fezExclusao)
+//                 strcat(msg, " removed ");
+//             else
+//                 strcat(msg, " ");
+//             strcat(msg, msgSensorNaoExiste);
+//         }
+//     }
+//     msg[strlen(msg)-1] = '\n';
+//     int numBytes = send(socketCliente, msg, strlen(msg), 0);
+//     if(numBytes != strlen(msg))
+//         exibirLogSaida("send");
+// }
 
-double gerarLeituraSensor() {
-    return (double)(rand() % 1001)/100;
+// double gerarLeituraSensor() {
+//     return (double)(rand() % 1001)/100;
 }
 
 void consultarVariavelDeProcesso(char *instrucao, int socketCliente) {
-    char msg[500];
-    memset(msg, 0, 500);
-    int sensores[MAX_SENSORES_POR_VEZ];
-    char *entrada = strtok(instrucao, " ");
-    int numSensores = 0;
-    bool entradaInvalida = false;
-    while(strcmp(entrada, "in") != 0 && !entradaInvalida) {
-        if(validaId(entrada) == -1) {
-            entradaInvalida = true;
-            strcat(msg, "invalid sensor ");
-        }
-        else {
-            sensores[numSensores] = atoi(entrada);
-            numSensores++;
-        }
-        entrada = strtok(NULL, " ");
-    }
-    entrada = strtok(NULL, " ");
-    char msgSensorNaoInstalado[100];
-    memset(msgSensorNaoInstalado, 0, 100);
-    if(!entradaInvalida){
-        if(validaId(entrada) == -1)
-            strcat(msg, "invalid equipment ");
-        else {
-            int equipamentoId = atoi(entrada);
-            char idStr[4];
-            bool fezAlgumaLeitura = false;
-            char leituraStr[6];
-            for(int i = 0; i < numSensores; i++) {
-                if(sistema[equipamentoId-1][sensores[i]-1]) {
-                    sprintf(leituraStr, "%.2f ", gerarLeituraSensor());
-                    strcat(msg, leituraStr);
-                    fezAlgumaLeitura = true;
-                }
-                else {
-                    sprintf(idStr, "0%d ", sensores[i]);
-                    strcat(msgSensorNaoInstalado, idStr);
-                }
-            }
-            if(fezAlgumaLeitura && strcmp(msgSensorNaoInstalado, "") != 0) {
-                strcat(msg, "and ");
-                strcat(msg, msgSensorNaoInstalado);
-                strcat(msg, "not installed ");
-            }
-            else if(strcmp(msgSensorNaoInstalado, "") != 0) {
-                 strcpy(msg, msgSensorNaoInstalado);
-                 strcat(msg, "not installed ");
-            }
-        }
-    }
-    msg[strlen(msg)-1] = '\n';
-    int numBytes = send(socketCliente, msg, strlen(msg), 0);
-    if(numBytes != strlen(msg))
-        exibirLogSaida("send");
+    // char msg[500];
+    // memset(msg, 0, 500);
+    // int sensores[MAX_SENSORES_POR_VEZ];
+    // char *entrada = strtok(instrucao, " ");
+    // int numSensores = 0;
+    // bool entradaInvalida = false;
+    // while(strcmp(entrada, "in") != 0 && !entradaInvalida) {
+    //     if(validaId(entrada) == -1) {
+    //         entradaInvalida = true;
+    //         strcat(msg, "invalid sensor ");
+    //     }
+    //     else {
+    //         sensores[numSensores] = atoi(entrada);
+    //         numSensores++;
+    //     }
+    //     entrada = strtok(NULL, " ");
+    // }
+    // entrada = strtok(NULL, " ");
+    // char msgSensorNaoInstalado[100];
+    // memset(msgSensorNaoInstalado, 0, 100);
+    // if(!entradaInvalida){
+    //     if(validaId(entrada) == -1)
+    //         strcat(msg, "invalid equipment ");
+    //     else {
+    //         int equipamentoId = atoi(entrada);
+    //         char idStr[4];
+    //         bool fezAlgumaLeitura = false;
+    //         char leituraStr[6];
+    //         for(int i = 0; i < numSensores; i++) {
+    //             if(sistema[equipamentoId-1][sensores[i]-1]) {
+    //                 sprintf(leituraStr, "%.2f ", gerarLeituraSensor());
+    //                 strcat(msg, leituraStr);
+    //                 fezAlgumaLeitura = true;
+    //             }
+    //             else {
+    //                 sprintf(idStr, "0%d ", sensores[i]);
+    //                 strcat(msgSensorNaoInstalado, idStr);
+    //             }
+    //         }
+    //         if(fezAlgumaLeitura && strcmp(msgSensorNaoInstalado, "") != 0) {
+    //             strcat(msg, "and ");
+    //             strcat(msg, msgSensorNaoInstalado);
+    //             strcat(msg, "not installed ");
+    //         }
+    //         else if(strcmp(msgSensorNaoInstalado, "") != 0) {
+    //              strcpy(msg, msgSensorNaoInstalado);
+    //              strcat(msg, "not installed ");
+    //         }
+    //     }
+    // }
+    // msg[strlen(msg)-1] = '\n';
+    // int numBytes = send(socketCliente, msg, strlen(msg), 0);
+    // if(numBytes != strlen(msg))
+    //     exibirLogSaida("send");
 }
 
 int avaliarComando(char *comando, int socketCliente) {
-    char *instrucao = strtok(comando, " ");
-    while(instrucao != NULL) {
-        if(strcmp(instrucao, "add") == 0) {
-            instalarSensor(NULL, socketCliente);
-        }
-        else if(strcmp(instrucao, "remove") == 0) {
-            removerSensor(NULL, socketCliente);
-        }
-        else if(strcmp(instrucao, "list") == 0) {
-            consultarEquipamento(NULL, socketCliente);
-        }
-        else if(strcmp(instrucao, "read") == 0) {
-            consultarVariavelDeProcesso(NULL, socketCliente);
-        }
-        else {
-            close(socketCliente);
-            return -1;
-        }
-        instrucao = strtok(NULL, " ");
-    }
-    return 0;
+    // char *instrucao = strtok(comando, " ");
+    // while(instrucao != NULL) {
+    //     if(strcmp(instrucao, "add") == 0) {
+    //         instalarSensor(NULL, socketCliente);
+    //     }
+    //     else if(strcmp(instrucao, "remove") == 0) {
+    //         removerSensor(NULL, socketCliente);
+    //     }
+    //     else if(strcmp(instrucao, "list") == 0) {
+    //         consultarEquipamento(NULL, socketCliente);
+    //     }
+    //     else if(strcmp(instrucao, "read") == 0) {
+    //         consultarVariavelDeProcesso(NULL, socketCliente);
+    //     }
+    //     else {
+    //         close(socketCliente);
+    //         return -1;
+    //     }
+    //     instrucao = strtok(NULL, " ");
+    // }
+    // return 0;
 }
 
 void exibirInstrucoesDeUso(int argc, char **argv) {
