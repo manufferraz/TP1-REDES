@@ -20,56 +20,11 @@ struct Sensor {
 
 static struct Sensor sensores[100];
 static int *numSensores = sizeof(sensores) / sizeof(sensores[0]); // Calcula o número de sensores
-
-
-
-void RecebeInstrucao(char *instrucao){
-
-    // Usamos o strtok para dividir a instrução em strings com base nos espaços
-    char *param = strtok(instrucao, " ");
-
-    int posicao = 0;
-
-    int sensorID = 0;
-    int corrente = 0;
-    int tensao = 0;
-    int eficiencia = 0;
-
-    if(instrucao[0] == "INS_REC"){
-
-        while (param != NULL) {
-            if (posicao == 1) {
-                sscanf(param, "%d", &sensorID);
-            } else if (posicao == 2) {
-                sscanf(param, "%lf", &corrente);
-            } else if (posicao == 3) {
-                sscanf(param, "%lf", &tensao);
-            } else if (posicao == 4) {
-                sscanf(param, "%lf", &eficiencia);
-            }
-
-            param = strtok(NULL, " ");
-            posicao++;
-        }
-
-        instalarSensor(sensores, sensorID, corrente, tensao, eficiencia);
-    }
-    else if(instrucao[0] == "REM_REC"){
-
-        while (param != NULL) {
-            if (posicao == 1) {
-                sscanf(param, "%d", &sensorID);
-            }
-
-            param = strtok(NULL, " ");
-            posicao++;
-        }
-
-        desligarSensor(sensorID);
-    }
-
-}
-
+static int posicao = 0;
+static int sensorID = 0;
+static int corrente = 0;
+static int tensao = 0;
+static int eficiencia = 0;
 
 
 void instalarSensor(struct Sensor sensores[], int sensorID, int corrente, int tensao, int eficiencia) {
@@ -126,7 +81,7 @@ void desligarSensor(int sensorID){
 
 void exibirInstrucoesDeUso(int argc, char **argv) {
     printf("Uso: %s <v4|v6> <Porta do servidor>\n", argv[0]);
-    printf("Exemplo: %s v4 51511\n", argv[0]);
+    printf("Exemplo: %s v4 90900\n", argv[0]);
     exit(EXIT_FAILURE);
 }
 
@@ -147,10 +102,10 @@ int main(int argc, char **argv) {
         exibirLogSaida("socket");
     }
 
-    int enable = 1;
+    /*int enable = 1;
     if (0 != setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int))) {
         exibirLogSaida("setsockopt");
-    }
+    }*/
 
     struct sockaddr *addr = (struct sockaddr *)(&storage);
     if (0 != bind(socket_, addr, sizeof(storage))) {
@@ -175,6 +130,9 @@ int main(int argc, char **argv) {
             exibirLogSaida("accept");
         }
 
+//Aqui estão conectados
+
+
         char caddrstr[BUFSZ];
         converterEnderecoEmString(caddr, caddrstr, BUFSZ);
         printf("[log] connection from %s\n", caddrstr);
@@ -183,7 +141,8 @@ int main(int argc, char **argv) {
         int auxRetorno = 0;
         unsigned totalBytes;
         size_t numBytes;
-        char *linhas;
+        char *instrucao = strtok(buff, " ");
+
         while(1){
             memset(buff, 0, BUFSZ);
             totalBytes = 0;
@@ -197,28 +156,66 @@ int main(int argc, char **argv) {
             }
             if(auxRetorno == -1)
                 break;
+
             printf("%s", buff);
-            linhas = strtok(buff, "\n");
+
+            for (size_t i = 0; i < strlen(instrucao); i++){
+                instrucao[i] = strtok(buff, " ");
+            } 
+            //instrucao = {"INS_REQ", "1", "2", "3", "4"}
+
+            if(instrucao[0] == "INS_REC"){
+
+                while (instrucao != NULL) {
+                    if (posicao == 1) {
+                        sscanf(instrucao, "%d", &sensorID);
+                    } else if (posicao == 2) {
+                        sscanf(instrucao, "%lf", &corrente);
+                    } else if (posicao == 3) {
+                        sscanf(instrucao, "%lf", &tensao);
+                    } else if (posicao == 4) {
+                        sscanf(instrucao, "%lf", &eficiencia);
+                    }
+
+                    instrucao = strtok(NULL, " ");
+                    posicao++;
+                } 
+
+                instalarSensor(sensores, sensorID, corrente, tensao, eficiencia);
+            }
+            else if(instrucao[0] == "REM_REC"){
+
+                while (instrucao != NULL) {
+                    if (posicao == 1) {
+                        sscanf(instrucao, "%d", &sensorID);
+                    }
+
+                    instrucao = strtok(NULL, " ");
+                    posicao++;
+                }
+
+                desligarSensor(sensorID);
+            }
+
             if(strcmp(buff, "kill") == 0){
                 close(socketCliente);
                 exit(EXIT_SUCCESS);
                 return 0;
             }
 
-            while(linhas != NULL){
-		auxRetorno = avaliarComando(buff, socketCliente);
-		if(auxRetorno == -1){
-                    close(socketCliente);
-                    exit(EXIT_SUCCESS);
-                    return 0;
+            while(instrucao != NULL){
+                if(auxRetorno == -1){
+                            close(socketCliente);
+                            exit(EXIT_SUCCESS);
+                            return 0;
+                        }
+                        instrucao = strtok(NULL, " ");
+                    }
+                if(auxRetorno == -1)
+                        break;
                 }
-                linhas = strtok(NULL, "\n");
+                close(socketCliente);
             }
-	    if(auxRetorno == -1)
-                break;
-        }
-        close(socketCliente);
-    }
 
     exit(EXIT_SUCCESS);
 }
