@@ -85,90 +85,79 @@ void exibirInstrucoesDeUso(int argc, char **argv) {
     exit(EXIT_FAILURE);
 }
 
-int main(int argc, char **argv) {
-    srand((unsigned) time(NULL));
-    if (argc < 3) {
-        exibirInstrucoesDeUso(argc, argv);
+int main(int argc, char **argv)
+{
+    if (argc < 3)
+    {
+        usage(argc, argv);
     }
 
-    struct sockaddr_storage storage;
-    if (0 != inicializarSockAddrServer(argv[1], argv[2], &storage)) {
-        exibirInstrucoesDeUso(argc, argv);
+    struct sockaddr_storage storage;                           // estrutura de armazenamento p/ ipv6 ou ipv4
+    if (0 != server_sockaddr_init(argv[1], argv[2], &storage)) // parsing criada em common.c (útil tbm para server) do endereço para dentro da estrutura
+    {
+        usage(argc, argv);
     }
 
-    int socket_;
-    socket_ = socket(storage.ss_family, SOCK_STREAM, 0);
-    if (socket_ == -1) {
-        exibirLogSaida("socket");
+    // criação do socket
+    int s = socket(storage.ss_family, SOCK_STREAM, 0); // CRIA SOCKET CONEXÃO INTERNET COM TCP (lib types e socket)
+    if (s == -1)
+    {
+        logExit("socket");
     }
 
-    struct sockaddr *addr = (struct sockaddr *)(&storage);
-    if (0 != bind(socket_, addr, sizeof(storage))) {
-        exibirLogSaida("bind");
+    int enable = 1;
+    if (0 != setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int))) // reutilizar porto
+    {
+        logExit("setsocketopt");
     }
 
-    if (0 != listen(socket_, 10)) {
-        exibirLogSaida("listen");
+    struct sockaddr *addr = (struct sockaddr *)(&storage); // instanciação do endereço
+    if (0 != bind(s, addr, sizeof(storage)))
+    {
+        logExit("bind");
+    }
+
+    if (0 != listen(s, 10))
+    {
+        logExit("listen");
     }
 
     char addrstr[BUFSZ];
-    converterEnderecoEmString(addr, addrstr, BUFSZ);
+    addrToStr(addr, addrstr, BUFSZ);
     printf("bound to %s, waiting connections\n", addrstr);
 
     struct sockaddr_storage cstorage;
     struct sockaddr *caddr = (struct sockaddr *)(&cstorage);
     socklen_t caddrlen = sizeof(cstorage);
 
+    int csock = accept(s, caddr, &caddrlen);
+    if (csock == -1)
+    {
+        logExit("accept");
+    }
 
-    
-        
-        int socketCliente = accept(socket_, caddr, &caddrlen);
-        if (socketCliente == -1) {
-            exibirLogSaida("accept");
-        }
+    char caddrstr[BUFSZ];
+    addrToStr(caddr, caddrstr, BUFSZ);
+    printf("[log] connection from %s\n", caddrstr);
+    char *file_path;
 
-//Aqui estão conectados
+    while (1)
+    {
+        char buf[BUFSZ];
+        char *instrucao;
 
+        memset(buf, 0, BUFSZ);
 
-        char caddrstr[BUFSZ];
-        converterEnderecoEmString(caddr, caddrstr, BUFSZ);
-        printf("[log] connection from %s\n", caddrstr);
+        // Recebe o comando do cliente
+        ssize_t bytes_received = recv(csock, buf, BUFSZ, 0);
+        if (bytes_received > 0)
+        {
+            buf[bytes_received] = '\0';
 
-        while (1) {
+            instrucao = strtok(buf, " ");
+            printf("%s", buf);
 
-        char buff[BUFSZ];
-        int auxRetorno = 0;
-        size_t numBytes;
-
-        while(1){
-            memset(buff, 0, BUFSZ);
-            while(buff[strlen(buff)-1] != '\n') {
-                numBytes = recv(socket_, buff, BUFSZ, 0);
-                printf("%s", buff);
-
-                if(numBytes == 0){
-                    auxRetorno = -1;
-                    break;
-                }
-            }
-            if(auxRetorno == -1)
-                break;
-
-            printf("%s", buff);
-
-            char *instrucao;
-            instrucao = strtok(buff, " ");
-
-            while(instrucao) {
-                printf("token: %s\n", instrucao );
-                instrucao = strtok(NULL, " ");
-            }
-
-            for (size_t i = 0; i < strlen(buff); i++){
-               instrucao[i] = strtok(buff, " ");
-            } 
-            //instrucao = {"INS_REQ", "1", "2", "3", "4"}
-
+            // Verifica se o comando é "send file"
             if(instrucao[0] == "INS_REC"){
 
                 while (instrucao != NULL) {
@@ -202,26 +191,12 @@ int main(int argc, char **argv) {
                 desligarSensor(sensorID);
             }
 
-            if(strcmp(buff, "kill") == 0){
-                close(socketCliente);
+            if(strcmp(buf, "kill") == 0){
+                close(csock);
                 exit(EXIT_SUCCESS);
                 return 0;
             }
 
-            while(instrucao != NULL){
-                if(auxRetorno == -1){
-                            close(socketCliente);
-                            exit(EXIT_SUCCESS);
-                            return 0;
-                        }
-                        instrucao = strtok(NULL, " ");
-                    }
-                if(auxRetorno == -1)
-                        break;
-                }
-                close(socketCliente);
-            }
-
     exit(EXIT_SUCCESS);
 }
-
+    }
