@@ -102,11 +102,6 @@ int main(int argc, char **argv) {
         exibirLogSaida("socket");
     }
 
-    /*int enable = 1;
-    if (0 != setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int))) {
-        exibirLogSaida("setsockopt");
-    }*/
-
     struct sockaddr *addr = (struct sockaddr *)(&storage);
     if (0 != bind(socket_, addr, sizeof(storage))) {
         exibirLogSaida("bind");
@@ -120,11 +115,13 @@ int main(int argc, char **argv) {
     converterEnderecoEmString(addr, addrstr, BUFSZ);
     printf("bound to %s, waiting connections\n", addrstr);
 
-    while (1) {
-        struct sockaddr_storage cstorage;
-        struct sockaddr *caddr = (struct sockaddr *)(&cstorage);
-        socklen_t caddrlen = sizeof(cstorage);
+    struct sockaddr_storage cstorage;
+    struct sockaddr *caddr = (struct sockaddr *)(&cstorage);
+    socklen_t caddrlen = sizeof(cstorage);
 
+
+    
+        
         int socketCliente = accept(socket_, caddr, &caddrlen);
         if (socketCliente == -1) {
             exibirLogSaida("accept");
@@ -137,30 +134,38 @@ int main(int argc, char **argv) {
         converterEnderecoEmString(caddr, caddrstr, BUFSZ);
         printf("[log] connection from %s\n", caddrstr);
 
+        while (1) {
+
         char buff[BUFSZ];
         int auxRetorno = 0;
-        unsigned totalBytes;
         size_t numBytes;
-        char *instrucao = strtok(buff, " ");
 
         while(1){
             memset(buff, 0, BUFSZ);
-            totalBytes = 0;
             while(buff[strlen(buff)-1] != '\n') {
-                numBytes = recv(socketCliente, buff + totalBytes, BUFSZ - totalBytes, 0);
+                numBytes = recv(socket_, buff, BUFSZ, 0);
+                printf("%s", buff);
+
                 if(numBytes == 0){
                     auxRetorno = -1;
                     break;
                 }
-                totalBytes += numBytes;
             }
             if(auxRetorno == -1)
                 break;
 
             printf("%s", buff);
 
-            for (size_t i = 0; i < strlen(instrucao); i++){
-                instrucao[i] = strtok(buff, " ");
+            char *instrucao;
+            instrucao = strtok(buff, " ");
+
+            while(instrucao) {
+                printf("token: %s\n", instrucao );
+                instrucao = strtok(NULL, " ");
+            }
+
+            for (size_t i = 0; i < strlen(buff); i++){
+               instrucao[i] = strtok(buff, " ");
             } 
             //instrucao = {"INS_REQ", "1", "2", "3", "4"}
 
