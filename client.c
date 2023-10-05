@@ -18,8 +18,10 @@ void usage(int argc, char **argv)
     exit(EXIT_FAILURE);
 }
 
-void TrataInstall(char *string) 
+char* TrataInstall(char *string) 
 {
+	char *instrucao = (char *)malloc(BUFSZ); // Aloca memória para a string formatada
+
     if (string[1] == "file") {
         // Abre o arquivo e lê os parâmetros
         FILE *arquivo;
@@ -103,40 +105,47 @@ int main(int argc, char **argv)
         char instrucao[BUFSZ]; // Variável para armazenar a instrução recebida
 
         memset(buf, 0, BUFSZ);
+        // Recebe o comando do terminal
+		fgets(buf, sizeof(buf), stdin);
+		//buf[strcspn(buf, "\n")] = '\0'; // Remove a quebra de linha do final
 
-        // Recebe o comando do cliente
-        ssize_t bytes_received = recv(csock, buf, BUFSZ, 0);
-        if (bytes_received > 0) {
+
+        // ssize_t bytes_received = recv(s, buf, BUFSZ, 0);
+        // if (bytes_received > 0) {
+		// 	printf("%s", buf);
 
             strncpy(instrucao, buf, sizeof(instrucao) - 1);
-            instrucao[sizeof(instrucao) - 1] = '\0'; // Certifique-se de terminar a string
+            instrucao[sizeof(instrucao) - 1] = '\0';
 
             printf("Instrução recebida: %s\n", instrucao);
 
             if (strcmp(instrucao, "kill") == 0) {
-                close(csock);
+                close(s);
                 printf("Servidor encerrado pelo cliente.\n");
                 exit(EXIT_SUCCESS);
             }
 
-            // Processa a instrução e cria um array de elementos
-            char *string[BUFSZ];
-            int numTokens = 0;
+    //         // Processa a instrução e cria um array de elementos
+    //         char *string[BUFSZ];
+    //         int numTokens = 0;
 
-            // Usa strtok para dividir a instrução em tokens com base nos espaços
-            char *token = strtok(instrucao, " ");
-            while (token != NULL) {
-                string[numTokens++] = token;
-                token = strtok(NULL, " ");
-            }
+    //         Usa strtok para dividir a instrução em tokens com base nos espaços
+    //         char *token = strtok(instrucao, " ");
+    //         while (token != NULL) {
+    //             string[numTokens++] = token;
+    //             token = strtok(NULL, " ");
+    //         }
 
-            // Agora 'tokens' contém os elementos separados da instrução
-            char *comando;
-			if (strcmp(string[0], "install") == 0) {
-				snprintf(comando, strlen(comando), TrataInstall(string)); //OLHAR ISSO
-				send(s, comando, strlen(comando), 0);
-				}
-        }
+    //         // Agora 'tokens' contém os elementos separados da instrução
+    //         char comando;
+	// 		if (strcmp(string[0], "install") == 0) {
+	// 			printf("tá aqui");
+	// 			comando = TrataInstall(string);
+	// 			printf("chegou %s", comando);
+	// 			send(s, comando, strlen(comando), 0);
+	// 			}
+	// }
+			send(s, buf, strlen(buf), 0);
     }
 
 	close(s);

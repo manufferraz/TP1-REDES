@@ -156,6 +156,13 @@ int main(int argc, char **argv)
             instrucao[sizeof(instrucao) - 1] = '\0'; // Certifique-se de terminar a string
 
             printf("Instrução recebida: %s\n", instrucao);
+            printf(strlen(instrucao));
+
+            if (strcmp(instrucao, "kill") == 0) {
+                close(csock);
+                printf("Servidor encerrado pelo cliente.\n");
+                exit(EXIT_SUCCESS);
+            }
 
             // Processa a instrução e cria um array de elementos
             char *comando[BUFSZ];
@@ -168,23 +175,22 @@ int main(int argc, char **argv)
                 token = strtok(NULL, " ");
             }
 
-            // Agora 'tokens' contém os elementos separados da instrução
-            if(comando[0] == "INS_REC"){
+            // Agora 'comando' contém os elementos separados da instrução
+            if (strcmp(comando[0], "INS_REC") == 0) {
+                int sensorID;
+                double corrente, tensao, eficiencia;
 
-                while (comando != NULL) {
-                    if (numTokens == 1) {
-                        sscanf(comando, "%d", &sensorID);
-                    } else if (numTokens == 2) {
-                        sscanf(comando, "%lf", &corrente);
-                    } else if (numTokens == 3) {
-                        sscanf(comando, "%lf", &tensao);
-                    } else if (numTokens == 4) {
-                        sscanf(comando, "%lf", &eficiencia);
+                for (int i = 1; i < numTokens; i++) {
+                    if (i == 1) {
+                        sscanf(comando[i], "%d", &sensorID);
+                    } else if (i == 2) {
+                        sscanf(comando[i], "%lf", &corrente);
+                    } else if (i == 3) {
+                        sscanf(comando[i], "%lf", &tensao);
+                    } else if (i == 4) {
+                        sscanf(comando[i], "%lf", &eficiencia);
                     }
-
-                    comando = strtok(NULL, " ");
-                    numTokens++;
-                } 
+                }
 
                 instalarSensor(sensores, sensorID, corrente, tensao, eficiencia);
             }
