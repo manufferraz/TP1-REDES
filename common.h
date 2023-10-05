@@ -1,14 +1,158 @@
 #pragma once
 
 #include <stdlib.h>
-
 #include <arpa/inet.h>
 
-void exibirLogSaida(const char *msg);
+int addrParse(const char *addrstr, const char *portstr, struct sockaddr_storage *storage);
 
-int parsearEndereco(const char *addrstr, const char *portstr, struct sockaddr_storage *storage);
+void addrToStr(const struct sockaddr *addr, char *str, size_t strsize);
 
-void converterEnderecoEmString(const struct sockaddr *addr, char *str, size_t strsize);
+int server_sockaddr_init(const char *proto, const char *portstr, struct sockaddr_storage *storage);
 
-int inicializarSockAddrServer(const char *protocolo, const char *portstr, struct sockaddr_storage *storage);
+void logExit(const char *msg);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

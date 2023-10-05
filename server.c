@@ -60,7 +60,8 @@ void instalarSensor(struct Sensor sensores[], int sensorID, int corrente, int te
     }
 }
 
-void desligarSensor(int sensorID){
+void desligarSensor(int sensorID)
+{
     for (int i = 0; i < numSensores; i++) {
         if (sensores[i].id == sensorID) {
 
@@ -79,9 +80,10 @@ void desligarSensor(int sensorID){
 
 
 
-void exibirInstrucoesDeUso(int argc, char **argv) {
-    printf("Uso: %s <v4|v6> <Porta do servidor>\n", argv[0]);
-    printf("Exemplo: %s v4 90900\n", argv[0]);
+void usage(int argc, char **argv)
+{
+    printf("usage: %s <v4|v6> <server port>\n", argv[0]);
+    printf("example: %s v4 51511\n", argv[0]);
     exit(EXIT_FAILURE);
 }
 
@@ -139,64 +141,57 @@ int main(int argc, char **argv)
     char caddrstr[BUFSZ];
     addrToStr(caddr, caddrstr, BUFSZ);
     printf("[log] connection from %s\n", caddrstr);
-    char *file_path;
 
-    while (1)
-    {
+     while (1) {
         char buf[BUFSZ];
-        char *instrucao;
+        char instrucao[BUFSZ]; // Variável para armazenar a instrução recebida
 
         memset(buf, 0, BUFSZ);
 
         // Recebe o comando do cliente
         ssize_t bytes_received = recv(csock, buf, BUFSZ, 0);
-        if (bytes_received > 0)
-        {
-            buf[bytes_received] = '\0';
+        if (bytes_received > 0) {
+            // Copia o conteúdo recebido para 'instrucao'
+            strncpy(instrucao, buf, sizeof(instrucao) - 1);
+            instrucao[sizeof(instrucao) - 1] = '\0'; // Certifique-se de terminar a string
 
-            instrucao = strtok(buf, " ");
-            printf("%s", buf);
+            printf("Instrução recebida: %s\n", instrucao);
 
-            // Verifica se o comando é "send file"
-            if(instrucao[0] == "INS_REC"){
+            // Processa a instrução e cria um array de elementos
+            char *comando[BUFSZ];
+            int numTokens = 0;
 
-                while (instrucao != NULL) {
-                    if (posicao == 1) {
-                        sscanf(instrucao, "%d", &sensorID);
-                    } else if (posicao == 2) {
-                        sscanf(instrucao, "%lf", &corrente);
-                    } else if (posicao == 3) {
-                        sscanf(instrucao, "%lf", &tensao);
-                    } else if (posicao == 4) {
-                        sscanf(instrucao, "%lf", &eficiencia);
+            // Usa strtok para dividir a instrução em tokens com base nos espaços
+            char *token = strtok(instrucao, " ");
+            while (token != NULL) {
+                comando[numTokens++] = token;
+                token = strtok(NULL, " ");
+            }
+
+            // Agora 'tokens' contém os elementos separados da instrução
+            if(comando[0] == "INS_REC"){
+
+                while (comando != NULL) {
+                    if (numTokens == 1) {
+                        sscanf(comando, "%d", &sensorID);
+                    } else if (numTokens == 2) {
+                        sscanf(comando, "%lf", &corrente);
+                    } else if (numTokens == 3) {
+                        sscanf(comando, "%lf", &tensao);
+                    } else if (numTokens == 4) {
+                        sscanf(comando, "%lf", &eficiencia);
                     }
 
-                    instrucao = strtok(NULL, " ");
-                    posicao++;
+                    comando = strtok(NULL, " ");
+                    numTokens++;
                 } 
 
                 instalarSensor(sensores, sensorID, corrente, tensao, eficiencia);
             }
-            else if(instrucao[0] == "REM_REC"){
-
-                while (instrucao != NULL) {
-                    if (posicao == 1) {
-                        sscanf(instrucao, "%d", &sensorID);
-                    }
-
-                    instrucao = strtok(NULL, " ");
-                    posicao++;
-                }
-
-                desligarSensor(sensorID);
-            }
-
-            if(strcmp(buf, "kill") == 0){
-                close(csock);
-                exit(EXIT_SUCCESS);
-                return 0;
-            }
-
-    exit(EXIT_SUCCESS);
-}
+        }
     }
+
+    // Feche o socket 'csock' e faça qualquer limpeza necessária aqui
+
+    return 0;
+}
