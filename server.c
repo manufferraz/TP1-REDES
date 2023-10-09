@@ -15,69 +15,117 @@
 struct Sensor {
     int id;
     int potencia;
-    int eficiencia;
+    int efic_energ;
 };
 
 static struct Sensor sensores[100];
-static int *numSensores = sizeof(sensores) / sizeof(sensores[0]); // Calcula o número de sensores
-static int posicao = 0;
-static int sensorID = 0;
-static int corrente = 0;
-static int tensao = 0;
-static int eficiencia = 0;
+static int numSensores = 0; // Inicialmente, não há sensores instalados
 
+char* instalarSensor(int sensorId, int cor, int ten, int efic_energ) {
+    const int MAX_SENSORES = sizeof(sensores) / sizeof(sensores[0]);
+    char *mensagem = (char *)malloc(50); // Aloca memória para a mensagem
 
-void instalarSensor(struct Sensor sensores[], int sensorID, int corrente, int tensao, int eficiencia) {
-    int i;
-    const int MAX_SENSORES = 100; 
-
-    
-    for (i = 0; i < numSensores; i++) {
-        if (sensores[i].id == sensorID) {
-
-            printf("sensor already exists\n");
-            
-            break; // Saímos do loop quando encontramos o sensor
-        
-        } else {
-            printf("sensor not installed\n");
-
-              // Calcula a potência elétrica e adiciona o sensor à tabela 1
-              const int potencia = tensao * corrente;
-
-              //Adiciona o sensor à struct
-              if (*numSensores < MAX_SENSORES) {
-                sensores[*numSensores].id = sensorID;
-                sensores[*numSensores].potencia = potencia;
-                sensores[*numSensores].eficiencia = eficiencia;
-                (*numSensores)++; // Incrementa o número de sensores na struct
-                printf("successful installation\n");
-            } else {
-                return 1;
-            }
-
+    // Verifica se o sensor já está instalado
+    for (int i = 0; i < numSensores; i++) {
+        if (sensores[i].id == sensorId) {
+            strcpy(mensagem, "sensor already installed");
+            return; // Sai da função sem fazer nada, pois o sensor já existe
         }
     }
+
+    // Calcula a potência elétrica
+    const int potencia = ten * cor;
+
+    // Adiciona o sensor à struct se houver espaço
+    if (numSensores < MAX_SENSORES) {
+        sensores[numSensores].id = sensorId;
+        sensores[numSensores].potencia = potencia;
+        sensores[numSensores].efic_energ = efic_energ;
+        numSensores++; // Incrementa o número de sensores na struct
+        strcpy(mensagem, "sensor successfully installed");
+    } else {
+        printf("Maximum number of sensors reached\n");
+    }
+
+    printf("%s\n", mensagem);
+    
+    return mensagem;
 }
 
-void desligarSensor(int sensorID)
-{
-    for (int i = 0; i < numSensores; i++) {
-        if (sensores[i].id == sensorID) {
 
-            for (int j = i; j < *numSensores - 1; j++) {
+char* desligarSensor(int sensorId)
+{
+    char *mensagem = (char *)malloc(50); // Aloca memória para a mensagem
+    bool sensorEncontrado = false; // Variável para rastrear se o sensor foi encontrado
+    
+    // Verifica se o sensor já está instalado
+    for (int i = 0; i < numSensores; i++) {
+        if (sensores[i].id == sensorId) {
+            sensorEncontrado = true; // Sensor encontrado
+            
+            for (int j = i; j < numSensores - 1; j++) {
                 sensores[j] = sensores[j + 1];
             }
-
-            (*numSensores)--; // Decrementa o número de sensores
-
-            printf("successful removal\n");
+            
+            numSensores--;
         }
-
-        }
-        printf("sensor not installed\n"); //COMO MANDAR A MENSAGEM DE ERRO PARA A RTU?
+    }
+    
+    if (sensorEncontrado) {
+        strcpy(mensagem, "successful removal");
+    } else {
+        strcpy(mensagem, "sensor not installed");
     }
 
+    printf("%s\n", mensagem);
+    
+    return mensagem;
+}
+
+char* atualizarSensor(int sensorId, int cor, int ten, int efic_energ) {
+    const int MAX_SENSORES = sizeof(sensores) / sizeof(sensores[0]);
+
+    char *mensagem = (char *)malloc(BUFSZ); // Aloca memória para a mensagem
+
+    // Procura o sensor pelo sensorId
+    for (int i = 0; i < numSensores; i++) {
+        if (sensores[i].id == sensorId) {
+            // Atualiza os parâmetros do sensor
+            sensores[i].potencia = ten * cor;
+            sensores[i].efic_energ = efic_energ;
+            strcpy(mensagem, "successful change");
+            return mensagem; // Retorna a mensagem após a atualização
+        }
+    }
+
+    // Se o sensorId não for encontrado, imprime uma mensagem de erro
+    strcpy(mensagem, "sensor not installed");
+    printf("%s\n", mensagem);
+
+    return mensagem;
+}
+
+char* MostrarSensor(int sensorId) {
+    char *mensagem = (char *)malloc(50); // Aloca memória para a mensagem
+    bool sensorEncontrado = false; // Variável para rastrear se o sensor foi encontrado
+    
+    // Verifica se o sensor já está instalado
+    for (int i = 0; i < numSensores; i++) {
+        if (sensores[i].id == sensorId) {
+            sensorEncontrado = true; // Sensor encontrado
+            snprintf(mensagem, 50, "sensor %d %d %d", sensores[i].id, sensores[i].potencia, sensores[i].efic_energ);
+            break; // Sensor encontrado, não é necessário continuar o loop
+        }
+    }
+    
+    if (!sensorEncontrado) {
+        strcpy(mensagem, "sensor not installed");
+    }
+
+    printf("%s\n", mensagem);
+    
+    return mensagem;
+}
 
 
 void usage(int argc, char **argv)
@@ -144,60 +192,107 @@ int main(int argc, char **argv)
 
      while (1) {
         char buf[BUFSZ];
-        char instrucao[BUFSZ]; // Variável para armazenar a instrução recebida
+        char comando[BUFSZ]; // Variável para armazenar a instrução recebida
 
         memset(buf, 0, BUFSZ);
 
         // Recebe o comando do cliente
         ssize_t bytes_received = recv(csock, buf, BUFSZ, 0);
+
         if (bytes_received > 0) {
-            // Copia o conteúdo recebido para 'instrucao'
-            strncpy(instrucao, buf, sizeof(instrucao) - 1);
-            instrucao[sizeof(instrucao) - 1] = '\0'; // Certifique-se de terminar a string
+            // Copia o conteúdo recebido para 'comando'
+            strncpy(comando, buf, sizeof(comando) - 1);
+            comando[strcspn(comando, "\n")] = '\0';
 
-            printf("Instrução recebida: %s\n", instrucao);
-            printf(strlen(instrucao));
+            printf("Comando recebido: %s\n", comando);
 
-            if (strcmp(instrucao, "kill") == 0) {
+            // Processa a instrução e cria um array de elementos
+            char *aux[BUFSZ];
+            int numTokens = 0;
+
+            char temp[BUFSZ];
+            strcpy(temp, comando); 
+            char *token = strtok(temp, " ");
+            while (token != NULL) {
+                aux[numTokens++] = token;
+                token = strtok(NULL, " ");
+            }
+
+            // Agora 'comando' contém os elementos separados da instrução
+            if (numTokens > 0 && strcmp(aux[0], "INS_REQ") == 0) {                
+                int sensorId, cor, ten, efic_energ;
+
+                for (int i = 1; i < numTokens; i++) {
+                    if (i == 1) {
+                        sscanf(aux[i], "%d", &sensorId);
+                    } else if (i == 2) {
+                        sscanf(aux[i], "%d", &cor);
+                    } else if (i == 3) {
+                        sscanf(aux[i], "%d", &ten);
+                    } else if (i == 4) {
+                        sscanf(aux[i], "%d", &efic_energ);
+                    }
+                }
+                char *mensagem =  instalarSensor(sensorId, cor, ten, efic_energ);
+                if (comando != NULL) {
+                    send(csock, mensagem, strlen(mensagem), 0);
+                    free(mensagem);
+                }
+            } else if (numTokens > 0 && strcmp(aux[0], "REM_REQ") == 0) {                
+                int sensorId;
+
+                for (int i = 1; i < numTokens; i++) {
+                    if (i == 1) {
+                        sscanf(aux[i], "%d", &sensorId);
+                    }
+                }
+
+                char *mensagem = desligarSensor(sensorId);
+                if (comando != NULL) {
+                    send(csock, mensagem, strlen(mensagem), 0);
+                    free(mensagem);
+                }
+            }else if (numTokens > 0 && strcmp(aux[0], "CH_REQ") == 0) {                
+                int sensorId, cor, ten, efic_energ;
+
+                for (int i = 1; i < numTokens; i++) {
+                    if (i == 1) {
+                        sscanf(aux[i], "%d", &sensorId);
+                    } else if (i == 2) {
+                        sscanf(aux[i], "%d", &cor);
+                    } else if (i == 3) {
+                        sscanf(aux[i], "%d", &ten);
+                    } else if (i == 4) {
+                        sscanf(aux[i], "%d", &efic_energ);
+                    }
+                }
+                char *mensagem = atualizarSensor(sensorId, cor, ten, efic_energ);
+                if (comando != NULL) {
+                    send(csock, mensagem, strlen(mensagem), 0);
+                    free(mensagem);
+                }
+            } else if (numTokens > 0 && strcmp(aux[0], "SEN_REQ") == 0) {                
+                int sensorId;
+
+                for (int i = 1; i < numTokens; i++) {
+                    if (i == 1) {
+                        sscanf(aux[i], "%d", &sensorId);
+                    }
+                }
+
+                char *mensagem = MostrarSensor(sensorId);
+                if (comando != NULL) {
+                    send(csock, mensagem, strlen(mensagem), 0);
+                    free(mensagem);
+                }
+            } else if (strcmp(comando, "kill") == 0) {
                 close(csock);
                 printf("Servidor encerrado pelo cliente.\n");
                 exit(EXIT_SUCCESS);
             }
 
-            // Processa a instrução e cria um array de elementos
-            char *comando[BUFSZ];
-            int numTokens = 0;
-
-            // Usa strtok para dividir a instrução em tokens com base nos espaços
-            char *token = strtok(instrucao, " ");
-            while (token != NULL) {
-                comando[numTokens++] = token;
-                token = strtok(NULL, " ");
-            }
-
-            // Agora 'comando' contém os elementos separados da instrução
-            if (strcmp(comando[0], "INS_REC") == 0) {
-                int sensorID;
-                double corrente, tensao, eficiencia;
-
-                for (int i = 1; i < numTokens; i++) {
-                    if (i == 1) {
-                        sscanf(comando[i], "%d", &sensorID);
-                    } else if (i == 2) {
-                        sscanf(comando[i], "%lf", &corrente);
-                    } else if (i == 3) {
-                        sscanf(comando[i], "%lf", &tensao);
-                    } else if (i == 4) {
-                        sscanf(comando[i], "%lf", &eficiencia);
-                    }
-                }
-
-                instalarSensor(sensores, sensorID, corrente, tensao, eficiencia);
-            }
         }
     }
-
-    // Feche o socket 'csock' e faça qualquer limpeza necessária aqui
-
+    close(csock);
     return 0;
 }

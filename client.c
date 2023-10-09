@@ -18,55 +18,141 @@ void usage(int argc, char **argv)
     exit(EXIT_FAILURE);
 }
 
-char* TrataInstall(char *string) 
+char* TrataInstall(char *instrucao[]) 
 {
-	char *instrucao = (char *)malloc(BUFSZ); // Aloca memória para a string formatada
-
-    if (string[1] == "file") {
+    if (strcmp(instrucao[1], "file") == 0) {
         // Abre o arquivo e lê os parâmetros
         FILE *arquivo;
-        int sensorID, corrente, tensao, eficiencia;
+        int sensorId, corrente, tensao, eficiencia;
 
-        arquivo = fopen(string[2], "r");
+        if (instrucao[2][strlen(instrucao[2]) - 1] == '0') {
+            instrucao[2][strlen(instrucao[2]) - 1] = '\0';
+        }
+        
+        arquivo = fopen(instrucao[2], "r");
 
         // Verifica se o arquivo foi aberto com sucesso
         if (arquivo == NULL) {
             printf("Erro ao abrir o arquivo.\n");
-            return 1;
+            return NULL;
         }
 
-        // Lê os três parâmetros do arquivo
-        if (fscanf(arquivo, "%d %d %d %d", &sensorID, &corrente, &tensao, &eficiencia) == 4) {
-            printf("O arquivo está completo. \n");
-            // monta string para mandar para o server
-            snprintf(instrucao, BUFSZ, "INS_REQ %d %d %d %d", sensorID, corrente, tensao, eficiencia);
-
-            return instrucao;
+        // Lê os quatro parâmetros do arquivo
+        if (fscanf(arquivo, "%d %d %d %d", &sensorId, &corrente, &tensao, &eficiencia) == 4) {
+            // Verifica se os parâmetros estão dentro das especificações
+            if (corrente >= 0 && corrente <= 10 && tensao >= 0 && tensao <= 150 && eficiencia >= 0 && eficiencia <= 100) {
+                // Cria o comando INS_REQ com base nos parâmetros lidos
+                char *comando = (char *)malloc(BUFSZ); 
+                snprintf(comando, BUFSZ, "INS_REQ %d %d %d %d", sensorId, corrente, tensao, eficiencia);
+                fclose(arquivo);
+                return comando;
+            } else {
+                printf("invalid sensor.\n");
+            }
         } else {
             printf("Erro ao ler os parâmetros do arquivo.\n");
         }
+        fclose(arquivo);
 
-        fclose(arquivo); // Fecha o arquivo após a leitura
-    } else if (string[1] == "param") {
-        int num1 = 0;
+    } else if (strcmp(instrucao[1], "param") == 0) {
+        int sensorId, cor, ten, efic_energ;
+        sscanf(instrucao[2], "%d", &sensorId);
+        sscanf(instrucao[3], "%d", &cor);
+        sscanf(instrucao[4], "%d", &ten);
+        sscanf(instrucao[5], "%d", &efic_energ);
 
-        if (sscanf(string[2], "%d", &num1) == 1) {
-            int num2, num3, num4;
-            if (sscanf(string[3], "%d %d %d %d", &num2, &num3, &num4) == 4) {
-                int sensorID = num1;
-                int corrente = num2;
-                int tensao = num3;
-                int eficiencia = num4;
-
-                sprintf(instrucao, "INS_REQ %d %d %d %d", sensorID, corrente, tensao, eficiencia);
-
-                //printf("%s", instrucao);
-                return instrucao;
-            } else { // client kill
-                printf("A instrução não contém quatro números válidos após comando[1].\n");
-            }
+        // Verifica se os parâmetros estão dentro das especificações
+        if (cor >= 0 && cor <= 10 && ten >= 0 && ten <= 150 && efic_energ >= 0 && efic_energ <= 100) {
+            // Cria o comando INS_REQ com base nos parâmetros
+            char *comando = (char *)malloc(BUFSZ); 
+            snprintf(comando, BUFSZ, "INS_REQ %d %d %d %d", sensorId, cor, ten, efic_energ);
+            return comando;
+        } else {
+            printf("invalid sensor\n");
         }
     }
+
+    return NULL;
+}
+
+
+char* TrataRemove(char *instrucao[])
+{
+        int sensorId;
+        sscanf(instrucao[1], "%d", &sensorId);
+
+        // Cria o comando REM_REQ com base nos parâmetros
+        char *comando = (char *)malloc(BUFSZ); 
+        snprintf(comando, BUFSZ, "REM_REQ %d", sensorId);
+        return comando;
+}
+
+char* TrataShowValue (char *instrucao[])
+{
+        int sensorId;
+        sscanf(instrucao[2], "%d", &sensorId);
+
+        // Cria o comando SEN_REQ com base nos parâmetros
+        char *comando = (char *)malloc(BUFSZ); 
+        snprintf(comando, BUFSZ, "SEN_REQ %d", sensorId);
+        return comando;
+}
+
+char* TrataChange(char *instrucao[]) 
+{
+    if (strcmp(instrucao[1], "file") == 0) {
+        // Abre o arquivo e lê os parâmetros
+        FILE *arquivo;
+        int sensorId, corrente, tensao, eficiencia;
+
+        if (instrucao[2][strlen(instrucao[2]) - 1] == '0') {
+            instrucao[2][strlen(instrucao[2]) - 1] = '\0';
+        }
+        
+        arquivo = fopen(instrucao[2], "r");
+
+        // Verifica se o arquivo foi aberto com sucesso
+        if (arquivo == NULL) {
+            printf("Erro ao abrir o arquivo.\n");
+            return NULL;
+        }
+
+        // Lê os quatro parâmetros do arquivo
+        if (fscanf(arquivo, "%d %d %d %d", &sensorId, &corrente, &tensao, &eficiencia) == 4) {
+            // Verifica se os parâmetros estão dentro das especificações
+            if (corrente >= 0 && corrente <= 10 && tensao >= 0 && tensao <= 150 && eficiencia >= 0 && eficiencia <= 100) {
+                // Cria o comando INS_REQ com base nos parâmetros lidos
+                char *comando = (char *)malloc(BUFSZ); 
+                snprintf(comando, BUFSZ, "CH_REQ %d %d %d %d", sensorId, corrente, tensao, eficiencia);
+                fclose(arquivo);
+                return comando;
+            } else {
+                printf("invalid sensor.\n");
+            }
+        } else {
+            printf("Erro ao ler os parâmetros do arquivo.\n");
+        }
+        fclose(arquivo);
+
+    } else if (strcmp(instrucao[1], "param") == 0) {
+        int sensorId, cor, ten, efic_energ;
+        sscanf(instrucao[2], "%d", &sensorId);
+        sscanf(instrucao[3], "%d", &cor);
+        sscanf(instrucao[4], "%d", &ten);
+        sscanf(instrucao[5], "%d", &efic_energ);
+
+        // Verifica se os parâmetros estão dentro das especificações
+        if (cor >= 0 && cor <= 10 && ten >= 0 && ten <= 150 && efic_energ >= 0 && efic_energ <= 100) {
+            // Cria o comando INS_REQ com base nos parâmetros
+            char *comando = (char *)malloc(BUFSZ); 
+            snprintf(comando, BUFSZ, "CH_REQ %d %d %d %d", sensorId, cor, ten, efic_energ);
+            return comando;
+        } else {
+            printf("invalid sensor\n");
+        }
+    }
+
+    return NULL;
 }
 
 int main(int argc, char **argv)
@@ -100,54 +186,87 @@ int main(int argc, char **argv)
 
     int selected = 0;
 
-    while (1) {
-        char buf[BUFSZ];
-        char instrucao[BUFSZ]; // Variável para armazenar a instrução recebida
+     while (1) {
+    char buf[BUFSZ];
+    char string[BUFSZ]; // Variável para armazenar a string recebida
+    char mensagem[BUFSZ]; // Variável para armazenar a string recebida
 
-        memset(buf, 0, BUFSZ);
-        // Recebe o comando do terminal
-		fgets(buf, sizeof(buf), stdin);
-		//buf[strcspn(buf, "\n")] = '\0'; // Remove a quebra de linha do final
+    memset(buf, 0, BUFSZ);
 
+    // Recebe o instrução do terminal
+    fgets(buf, sizeof(buf), stdin);
+    strncpy(string, buf, sizeof(string) - 1);
 
-        // ssize_t bytes_received = recv(s, buf, BUFSZ, 0);
-        // if (bytes_received > 0) {
-		// 	printf("%s", buf);
+    // Remova a quebra de linha do final da string
+    string[strcspn(string, "\n")] = '\0';
 
-            strncpy(instrucao, buf, sizeof(instrucao) - 1);
-            instrucao[sizeof(instrucao) - 1] = '\0';
+    // Processa a instrução e cria um array de elementos
+    char *instrucao[BUFSZ];
+    int numTokens = 0;
 
-            printf("Instrução recebida: %s\n", instrucao);
-
-            if (strcmp(instrucao, "kill") == 0) {
-                close(s);
-                printf("Servidor encerrado pelo cliente.\n");
-                exit(EXIT_SUCCESS);
-            }
-
-    //         // Processa a instrução e cria um array de elementos
-    //         char *string[BUFSZ];
-    //         int numTokens = 0;
-
-    //         Usa strtok para dividir a instrução em tokens com base nos espaços
-    //         char *token = strtok(instrucao, " ");
-    //         while (token != NULL) {
-    //             string[numTokens++] = token;
-    //             token = strtok(NULL, " ");
-    //         }
-
-    //         // Agora 'tokens' contém os elementos separados da instrução
-    //         char comando;
-	// 		if (strcmp(string[0], "install") == 0) {
-	// 			printf("tá aqui");
-	// 			comando = TrataInstall(string);
-	// 			printf("chegou %s", comando);
-	// 			send(s, comando, strlen(comando), 0);
-	// 			}
-	// }
-			send(s, buf, strlen(buf), 0);
+    char temp[BUFSZ];
+    strcpy(temp, string); 
+    char *token = strtok(temp, " ");
+    while (token != NULL) {
+        instrucao[numTokens++] = token;
+        token = strtok(NULL, " ");
     }
+
+    // Verifica se a primeira posição do array é igual a "install"
+    if (numTokens > 0 && strcmp(instrucao[0], "install") == 0) {
+       char *comando = TrataInstall(instrucao);
+        if (comando != NULL) {
+            send(s, comando, strlen(comando), 0);
+            free(comando);
+        }
+    } else if (numTokens > 0 && strcmp(instrucao[0], "remove") == 0) {
+       char *comando = TrataRemove(instrucao);
+        if (comando != NULL) {
+            send(s, comando, strlen(comando), 0);
+            free(comando);
+        }
+    } else if (numTokens > 0 && strcmp(instrucao[0], "show") == 0) {
+        if (strcmp(instrucao[1], "value")) {
+            char *comando = TrataShowValue(instrucao);
+            if (comando != NULL) {
+                send(s, comando, strlen(comando), 0);
+                free(comando);
+            }
+        } else if (strcmp(instrucao[1], "values")) {
+            char *comando = TrataShowValue(instrucao);
+            if (comando != NULL) {
+                send(s, comando, strlen(comando), 0);
+                free(comando);
+            }
+        }
+    } else if (numTokens > 0 && strcmp(instrucao[0], "change") == 0) {
+       char *comando = TrataChange(instrucao);
+        if (comando != NULL) {
+            send(s, comando, strlen(comando), 0);
+            free(comando);
+        }
+    } else if (strcmp(string, "kill") == 0) {
+        send(s, string, strlen(string), 0);
+        close(s);
+        printf("Servidor encerrado pelo cliente.\n");
+        exit(EXIT_SUCCESS);
+    }
+
+    // Recebe a mensgaem do servidor
+    ssize_t bytes_received = recv(s, buf, BUFSZ, 0);
+
+    if (bytes_received > 0) {
+        // Copia o conteúdo recebido para 'mensagem'
+        strncpy(mensagem, buf, sizeof(mensagem) - 1);
+        mensagem[strcspn(mensagem, "\n")] = '\0';
+
+        printf("mensagem recebida: %s\n", mensagem);
+    }
+
+}
 
 	close(s);
     return 0;
-}
+    }
+
+
