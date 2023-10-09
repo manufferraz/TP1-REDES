@@ -34,7 +34,6 @@ char* TrataInstall(char *instrucao[])
         // Verifica se o arquivo foi aberto com sucesso
         if (arquivo == NULL) {
             printf("Erro ao abrir o arquivo.\n");
-            return NULL;
         }
 
         // Lê os quatro parâmetros do arquivo
@@ -50,7 +49,7 @@ char* TrataInstall(char *instrucao[])
                 printf("invalid sensor.\n");
             }
         } else {
-            printf("Erro ao ler os parâmetros do arquivo.\n");
+            printf("invalid sensor.\n");
         }
         fclose(arquivo);
 
@@ -70,7 +69,7 @@ char* TrataInstall(char *instrucao[])
         } else {
             printf("invalid sensor\n");
         }
-    }
+    } 
 
     return NULL;
 }
@@ -87,14 +86,21 @@ char* TrataRemove(char *instrucao[])
         return comando;
 }
 
-char* TrataShowValue (char *instrucao[])
+char* TrataShowValue(char *instrucao[])
 {
         int sensorId;
         sscanf(instrucao[2], "%d", &sensorId);
 
         // Cria o comando SEN_REQ com base nos parâmetros
         char *comando = (char *)malloc(BUFSZ); 
-        snprintf(comando, BUFSZ, "SEN_REQ %d", sensorId);
+        snprintf(comando, BUFSZ, "VAL_REQ %d", sensorId);
+        return comando;
+}
+
+char* TrataShowValues(char *instrucao[])
+{
+        char *comando = (char *)malloc(BUFSZ); 
+        snprintf(comando, BUFSZ, "VAL_REQ");
         return comando;
 }
 
@@ -121,7 +127,7 @@ char* TrataChange(char *instrucao[])
         if (fscanf(arquivo, "%d %d %d %d", &sensorId, &corrente, &tensao, &eficiencia) == 4) {
             // Verifica se os parâmetros estão dentro das especificações
             if (corrente >= 0 && corrente <= 10 && tensao >= 0 && tensao <= 150 && eficiencia >= 0 && eficiencia <= 100) {
-                // Cria o comando INS_REQ com base nos parâmetros lidos
+                // Cria o comando CH_REQ com base nos parâmetros lidos
                 char *comando = (char *)malloc(BUFSZ); 
                 snprintf(comando, BUFSZ, "CH_REQ %d %d %d %d", sensorId, corrente, tensao, eficiencia);
                 fclose(arquivo);
@@ -135,23 +141,25 @@ char* TrataChange(char *instrucao[])
         fclose(arquivo);
 
     } else if (strcmp(instrucao[1], "param") == 0) {
-        int sensorId, cor, ten, efic_energ;
-        sscanf(instrucao[2], "%d", &sensorId);
-        sscanf(instrucao[3], "%d", &cor);
-        sscanf(instrucao[4], "%d", &ten);
-        sscanf(instrucao[5], "%d", &efic_energ);
+        int sensorId, corrente, tensao, eficiencia;
 
-        // Verifica se os parâmetros estão dentro das especificações
-        if (cor >= 0 && cor <= 10 && ten >= 0 && ten <= 150 && efic_energ >= 0 && efic_energ <= 100) {
-            // Cria o comando INS_REQ com base nos parâmetros
-            char *comando = (char *)malloc(BUFSZ); 
-            snprintf(comando, BUFSZ, "CH_REQ %d %d %d %d", sensorId, cor, ten, efic_energ);
-            return comando;
-        } else {
+        // Verifique se os argumentos têm o formato correto
+        if (sscanf(instrucao[2], "%d", &sensorId) != 1 ||
+            sscanf(instrucao[3], "%d", &corrente) != 1 ||
+            sscanf(instrucao[4], "%d", &tensao) != 1 ||
+            sscanf(instrucao[5], "%d", &eficiencia) != 1) {
             printf("invalid sensor\n");
+            return NULL;
         }
-    }
 
+        // Crie o comando CH_REQ com base nos parâmetros
+        char *comando = (char *)malloc(BUFSZ); 
+        if (comando != NULL) {
+            snprintf(comando, BUFSZ, "CH_REQ %d %d %d %d", sensorId, corrente, tensao, eficiencia);
+        }
+
+        return comando;
+        }
     return NULL;
 }
 
@@ -197,6 +205,7 @@ int main(int argc, char **argv)
     fgets(buf, sizeof(buf), stdin);
     strncpy(string, buf, sizeof(string) - 1);
 
+
     // Remova a quebra de linha do final da string
     string[strcspn(string, "\n")] = '\0';
 
@@ -214,10 +223,16 @@ int main(int argc, char **argv)
 
     // Verifica se a primeira posição do array é igual a "install"
     if (numTokens > 0 && strcmp(instrucao[0], "install") == 0) {
-       char *comando = TrataInstall(instrucao);
-        if (comando != NULL) {
-            send(s, comando, strlen(comando), 0);
-            free(comando);
+        if (strcmp(instrucao[1], "param") != 0 && strcmp(instrucao[1], "file") != 0) {
+            close(s);
+            printf("Invalid command.\n");
+            exit(EXIT_SUCCESS);
+        } else {
+            char *comando = TrataInstall(instrucao);
+                if (comando != NULL) {
+                    send(s, comando, strlen(comando), 0);
+                    free(comando);
+            }
         }
     } else if (numTokens > 0 && strcmp(instrucao[0], "remove") == 0) {
        char *comando = TrataRemove(instrucao);
@@ -233,22 +248,32 @@ int main(int argc, char **argv)
                 free(comando);
             }
         } else if (strcmp(instrucao[1], "values")) {
-            char *comando = TrataShowValue(instrucao);
+            char *comando = TrataShowValues(instrucao);
             if (comando != NULL) {
                 send(s, comando, strlen(comando), 0);
                 free(comando);
             }
         }
     } else if (numTokens > 0 && strcmp(instrucao[0], "change") == 0) {
-       char *comando = TrataChange(instrucao);
-        if (comando != NULL) {
-            send(s, comando, strlen(comando), 0);
-            free(comando);
+       if (strcmp(instrucao[1], "param") != 0 && strcmp(instrucao[1], "file") != 0) {
+            close(s);
+            printf("Invalid command.\n");
+            exit(EXIT_SUCCESS);
+        } else {
+            char *comando = TrataChange(instrucao);
+                if (comando != NULL) {
+                    send(s, comando, strlen(comando), 0);
+                    free(comando);
+            }
         }
     } else if (strcmp(string, "kill") == 0) {
         send(s, string, strlen(string), 0);
         close(s);
         printf("Servidor encerrado pelo cliente.\n");
+        exit(EXIT_SUCCESS);
+    } else {
+        close(s);
+        printf("Invalid command.\n");
         exit(EXIT_SUCCESS);
     }
 
@@ -264,9 +289,10 @@ int main(int argc, char **argv)
     }
 
 }
-
 	close(s);
     return 0;
     }
+
+
 
 
