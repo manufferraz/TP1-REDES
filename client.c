@@ -205,6 +205,7 @@ int main(int argc, char **argv)
     fgets(buf, sizeof(buf), stdin);
     strncpy(string, buf, sizeof(string) - 1);
 
+    bzero(buf, strlen(buf));
 
     // Remova a quebra de linha do final da string
     string[strcspn(string, "\n")] = '\0';
@@ -277,7 +278,9 @@ int main(int argc, char **argv)
         exit(EXIT_SUCCESS);
     }
 
-    // Recebe a mensgaem do servidor
+    bzero(buf, strlen(buf));
+
+    // Recebe a mensagem do servidor
     ssize_t bytes_received = recv(s, buf, BUFSZ, 0);
 
     if (bytes_received > 0) {
