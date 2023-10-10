@@ -86,14 +86,14 @@ char* TrataRemove(char *instrucao[])
         return comando;
 }
 
-char* TrataShowValue(char *instrucao[])
+char* TrataShowSensor(char *instrucao[])
 {
         int sensorId;
         sscanf(instrucao[2], "%d", &sensorId);
 
         // Cria o comando SEN_REQ com base nos parâmetros
         char *comando = (char *)malloc(BUFSZ); 
-        snprintf(comando, BUFSZ, "VAL_REQ %d", sensorId);
+        snprintf(comando, BUFSZ, "SEN_REQ %d", sensorId);
         return comando;
 }
 
@@ -136,7 +136,7 @@ char* TrataChange(char *instrucao[])
                 printf("invalid sensor.\n");
             }
         } else {
-            printf("Erro ao ler os parâmetros do arquivo.\n");
+            printf("Erro ao ler os parametros do arquivo.\n");
         }
         fclose(arquivo);
 
@@ -152,7 +152,7 @@ char* TrataChange(char *instrucao[])
             return NULL;
         }
 
-        // Crie o comando CH_REQ com base nos parâmetros
+        // Cria o comando CH_REQ com base nos parâmetros
         char *comando = (char *)malloc(BUFSZ); 
         if (comando != NULL) {
             snprintf(comando, BUFSZ, "CH_REQ %d %d %d %d", sensorId, corrente, tensao, eficiencia);
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
      while (1) {
     char buf[BUFSZ];
     char string[BUFSZ]; // Variável para armazenar a string recebida
-    char mensagem[BUFSZ]; // Variável para armazenar a string recebida
+    char mensagem[BUFSZ]; // Variável para armazenar a mensagem recebida
 
     memset(buf, 0, BUFSZ);
 
@@ -205,7 +205,7 @@ int main(int argc, char **argv)
     fgets(buf, sizeof(buf), stdin);
     strncpy(string, buf, sizeof(string) - 1);
 
-    bzero(buf, strlen(buf));
+    bzero(buf, strlen(buf)); // Limpa o buffer
 
     // Remova a quebra de linha do final da string
     string[strcspn(string, "\n")] = '\0';
@@ -242,18 +242,22 @@ int main(int argc, char **argv)
             free(comando);
         }
     } else if (numTokens > 0 && strcmp(instrucao[0], "show") == 0) {
-        if (strcmp(instrucao[1], "value")) {
-            char *comando = TrataShowValue(instrucao);
-            if (comando != NULL) {
-                send(s, comando, strlen(comando), 0);
-                free(comando);
-            }
-        } else if (strcmp(instrucao[1], "values")) {
+        if (!strcmp(instrucao[1], "values")) {
             char *comando = TrataShowValues(instrucao);
             if (comando != NULL) {
                 send(s, comando, strlen(comando), 0);
                 free(comando);
             }
+        } else if (!strcmp(instrucao[1], "value")) {
+            char *comando = TrataShowSensor(instrucao);
+            if (comando != NULL) {
+                send(s, comando, strlen(comando), 0);
+                free(comando);
+            }
+        } else {
+            close(s);
+            printf("Invalid command.\n");
+            exit(EXIT_SUCCESS);
         }
     } else if (numTokens > 0 && strcmp(instrucao[0], "change") == 0) {
        if (strcmp(instrucao[1], "param") != 0 && strcmp(instrucao[1], "file") != 0) {

@@ -44,7 +44,7 @@ char* instalarSensor(int sensorId, int cor, int ten, int efic_energ) {
         numSensores++; // Incrementa o número de sensores na struct
         strcpy(mensagem, "sensor successfully installed");
     } else {
-        printf("Maximum number of sensors reached\n");
+        printf("maximum number of sensors reached\n");
     }
 
     printf("%s\n", mensagem);
@@ -112,7 +112,7 @@ char* atualizarSensor(int sensorId, int cor, int ten, int efic_energ) {
 
 
 char* MostrarSensor(int sensorId) {
-    char *mensagem = (char *)malloc(50); // Aloca memória para a mensagem
+    char *mensagem = (char *)malloc(50); 
     bool sensorEncontrado = false; // Variável para rastrear se o sensor foi encontrado
     
     // Verifica se o sensor já está instalado
@@ -120,7 +120,7 @@ char* MostrarSensor(int sensorId) {
         if (sensores[i].id == sensorId) {
             sensorEncontrado = true; // Sensor encontrado
             snprintf(mensagem, 50, "sensor %d %d %d", sensores[i].id, sensores[i].potencia, sensores[i].efic_energ);
-            break; // Sensor encontrado, não é necessário continuar o loop
+            break; 
         }
     }
     
